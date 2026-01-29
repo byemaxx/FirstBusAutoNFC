@@ -1,10 +1,10 @@
-# FirstBus AutoNFC
+# First Bus AutoNFC
 
-Automatically turns **NFC off** when **FirstBus** opens the QR-code scanning flow, to prevent **NFC Pay** from being triggered and causing accidental double payment.
+Automatically turns **NFC off** when **First Bus** opens the QR-code scanning flow, to prevent **NFC Pay** from being triggered and causing accidental double payment.
 
 ## What it does
 
-- Detects when FirstBus enters the QR/scan flow
+- Detects when First Bus enters the QR/scan flow
 - Turns NFC off during that flow to reduce the chance of unintended NFC payments
 
 ## Requirements
@@ -14,7 +14,7 @@ Automatically turns **NFC off** when **FirstBus** opens the QR-code scanning flo
 - Root is required for toggling NFC programmatically (most ROMs)
 
 ## How it works
-- Hook FirstBus (via LSPosed/Xposed) and detect the scan-related UI/behavior
+- Hook First Bus (via LSPosed/Xposed) and detect the scan-related UI/behavior
 - Request the module app side to toggle NFC
 - NFC toggling is done through `su` (root)
 
@@ -26,8 +26,8 @@ Automatically turns **NFC off** when **FirstBus** opens the QR-code scanning flo
 
 1. Build APK: `./gradlew :app:assembleDebug`
 2. Install the APK on your device
-3. In LSPosed, enable the module and set the scope to **FirstBus**
-4. Force-stop and reopen FirstBus (reboot if needed)
+3. In LSPosed, enable the module and set the scope to **First Bus**
+4. Force-stop and reopen First Bus (reboot if needed)
 
 ## Notes
 
@@ -36,5 +36,5 @@ Automatically turns **NFC off** when **FirstBus** opens the QR-code scanning flo
 
 ## Troubleshooting
 
-- No effect: make sure the LSPosed scope is set to FirstBus, then force-stop FirstBus and reopen
+- No effect: make sure the LSPosed scope is set to First Bus, then force-stop First Bus and reopen
 - Root dialog/permission: grant root to the module app in your root manager
