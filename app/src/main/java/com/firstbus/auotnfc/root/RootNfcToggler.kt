@@ -33,8 +33,8 @@ internal object RootNfcToggler {
 
         val commands = if (enabled) {
             listOf(
-                "cmd nfc enable",
                 "svc nfc enable",
+                "cmd nfc enable",
                 "settings put global nfc_on 1",
                 "settings put secure nfc_on 1",
                 "pm enable com.android.nfc",
@@ -42,8 +42,8 @@ internal object RootNfcToggler {
             )
         } else {
             listOf(
-                "cmd nfc disable",
                 "svc nfc disable",
+                "cmd nfc disable",
                 "settings put global nfc_on 0",
                 "settings put secure nfc_on 0",
                 "pm disable-user --user 0 com.android.nfc",
