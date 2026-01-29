@@ -41,7 +41,6 @@
             android:name=".Home"
             android:exported="true"
             android:label="@string/app_name"
-            android:screenOrientation="behind"
             android:targetActivity=".ui.activity.MainActivity">
 
             <intent-filter>

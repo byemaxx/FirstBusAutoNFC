@@ -230,7 +230,7 @@ class MainActivity : AppViewsActivity() {
 
                 if (!hasRoot && !rootDialogShown) {
                     rootDialogShown = true
-                    if (!isFinishing && (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || !isDestroyed)) {
+                    if (!isFinishing && !isDestroyed) {
                         runCatching {
                             AlertDialog.Builder(this)
                                 .setTitle("Root Permission Required")

@@ -1,9 +1,6 @@
 <resources>
     <string name="app_name">FirstBus AutoNFC</string>
     <string name="xposed_desc">Auto turn off NFC when show mticket in firstbus</string>
-    <string name="about_module">This Xposed Module is made by YukiHookAPI. \nLearn more https://github.com/HighCapable/YuKiHookAPI</string>
-    <string name="about_module_extension">This Xposed Module is powered by KavaRef.\nLearn more https://github.com/HighCapable/KavaRef</string>
-    <string name="module_version">Module version: %1$s</string>
     <string name="module_not_activated">Module not activated</string>
     <string name="module_is_activated">Module is activated</string>
     <string name="display_settings">Display settings</string>
