@@ -1,40 +1,43 @@
 # First Bus AutoNFC
 
-Automatically turns **NFC off** when **First Bus** opens the QR-code scanning flow, to prevent **NFC Pay** from being triggered and causing accidental double payment.
+An xposed module that temporarily disables NFC when the First Bus (UK) app displays the QR ticket to reduce the chance of accidental contactless payments.
 
-## What it does
+## Features
 
-- Detects when First Bus enters the QR/scan flow
-- Turns NFC off during that flow to reduce the chance of unintended NFC payments
+- Detects when First Bus displays the QR ticket.
+- Temporarily turns NFC off while the ticket view is displayed.
+- Restores NFC when the ticket view is closed.
 
 ## Requirements
 
-- Android 8.1+ (`minSdk 27`)
-- LSPosed (recommended) / compatible Xposed framework
-- Root is required for toggling NFC programmatically (most ROMs)
+- LSPosed (recommended) or another compatible Xposed framework.
+- Root access on the device (required to toggle NFC programmatically).
 
 ## How it works
-- Hook First Bus (via LSPosed/Xposed) and detect the scan-related UI/behavior
-- Request the module app side to toggle NFC
-- NFC toggling is done through `su` (root)
+
+- Hooks First Bus via LSPosed/Xposed to detect the QR ticket display UI or related behavior.
+- Sends a request from the hook to the module app to toggle NFC state.
+- NFC is toggled using `su` (root) to ensure system-level control.
 
 ## Build
 
-- Debug: `./gradlew :app:assembleDebug`
+To build the debug APK:
 
-## Install / Enable
+```
+./gradlew :app:assembleDebug
+```
 
-1. Build APK: `./gradlew :app:assembleDebug`
-2. Install the APK on your device
-3. In LSPosed, enable the module and set the scope to **First Bus**
-4. Force-stop and reopen First Bus (reboot if needed)
+## Install & Enable
 
-## Notes
+1. Build and install the APK on your device.
+2. In LSPosed, enable the module and set its scope to the First Bus app.
+3. Force-stop First Bus and reopen it (or reboot the device) to apply hooks.
 
-- NFC toggling is a sensitive operation; behavior may vary by ROM/device.
-- Use at your own risk; this project aims to reduce accidental payments, not guarantee prevention.
+## Notes & Safety
+
+- Use this module at your own risk. It aims to reduce accidental payments but cannot guarantee prevention.
 
 ## Troubleshooting
 
-- No effect: make sure the LSPosed scope is set to First Bus, then force-stop First Bus and reopen
-- Root dialog/permission: grant root to the module app in your root manager
+- No effect: verify LSPosed scope includes First Bus, then force-stop and reopen the app.
+- Root permission prompt: grant root access to the module app in your root manager.
