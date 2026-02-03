@@ -13,4 +13,8 @@ internal object ModuleStatusProtocol {
     const val PREFS_NAME = "autonfc_settings"
     const val KEY_STRATEGY = "strategy"
     const val KEY_LAST_ROOT_OK = "last_root_ok"
+
+    // Debug
+    const val KEY_DEBUG_LOG = "debug_log"
+    const val KEY_DEBUG_STACK = "debug_stack"
 }

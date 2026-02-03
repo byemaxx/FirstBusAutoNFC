@@ -10,6 +10,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout as AndroidLinearLayout
 import com.firstbus.auotnfc.R
+import com.firstbus.auotnfc.hook.Logx
 import com.firstbus.auotnfc.hook.ModuleSettingsStore
 import com.firstbus.auotnfc.hook.NfcProtectionStrategy
 import com.firstbus.auotnfc.hook.RootShell
@@ -37,10 +38,15 @@ class MainActivity : AppViewsActivity() {
 
     private var strategySwitchView: com.firstbus.auotnfc.ui.view.MaterialSwitch? = null
 
+    private var debugSwitchView: com.firstbus.auotnfc.ui.view.MaterialSwitch? = null
+
     private var rootDialogShown = false
 
     @Volatile
     private var updatingStrategySwitch = false
+
+    @Volatile
+    private var updatingDebugSwitch = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,6 +55,7 @@ class MainActivity : AppViewsActivity() {
         findViewById<View>(Android_R.id.content).setBackgroundResource(R.color.colorThemeBackground)
 
         val initialStrategy = ModuleSettingsStore.getStrategy(this)
+        val initialDebugLog = ModuleSettingsStore.getDebugLog(this)
         val initialIsHookActive = computeIsHookActive()
         val initialActivationText = if (initialIsHookActive) getString(R.string.module_is_activated) else getString(R.string.module_not_activated)
 
@@ -213,6 +220,38 @@ class MainActivity : AppViewsActivity() {
                                     }
                                 }
                             }
+
+                            MaterialSwitch(
+                                lparams = LayoutParams(widthMatchParent = true)
+                            ) {
+                                text = "Enable debug logs"
+                                isAllCaps = false
+                                textColor = colorResource(R.color.colorTextGray)
+                                textSize = 15f
+                                isChecked = initialDebugLog
+                                debugSwitchView = this
+                                setOnCheckedChangeListener { button, isChecked ->
+                                    if (!button.isPressed || updatingDebugSwitch) return@setOnCheckedChangeListener
+
+                                    // Default OFF. When enabled, allow Logx.d output and stack traces.
+                                    ModuleSettingsStore.setDebugLog(this@MainActivity, isChecked)
+                                    ModuleSettingsStore.setDebugStackTrace(this@MainActivity, isChecked)
+                                    Logx.setDebugEnabled(isChecked)
+                                    refreshStatusViews()
+                                }
+                            }
+                            TextView(
+                                lparams = LayoutParams(widthMatchParent = true) {
+                                    bottomMargin = 6.dp
+                                }
+                            ) {
+                                alpha = 0.6f
+                                setLineSpacing(6f, 1f)
+                                text = "Root mode requires Root granted to this module app. If Root is not granted, ReaderMode will be used."
+                                textColor = colorResource(R.color.colorTextDark)
+                                textSize = 12f
+                            }
+
                             TextView(
                                 lparams = LayoutParams(widthMatchParent = true) {
                                     bottomMargin = 10.dp
@@ -220,7 +259,7 @@ class MainActivity : AppViewsActivity() {
                             ) {
                                 alpha = 0.6f
                                 setLineSpacing(6f, 1f)
-                                text = "Root mode requires Root granted to this module app. If Root is not granted, ReaderMode will be used."
+                                text = "Debug logs are OFF by default. Enable only when collecting logs."
                                 textColor = colorResource(R.color.colorTextDark)
                                 textSize = 12f
                             }
@@ -245,6 +284,7 @@ class MainActivity : AppViewsActivity() {
         val lastRootOk = ModuleSettingsStore.getLastRootOk(this)
         val isHookActive = computeIsHookActive()
         val strategy = ModuleSettingsStore.getStrategy(this)
+        val debugLog = ModuleSettingsStore.getDebugLog(this)
         val rootText = when (lastRootOk) {
             true -> "Root (Module App): granted"
             false -> "Root (Module App): not granted"
@@ -260,6 +300,10 @@ class MainActivity : AppViewsActivity() {
         updatingStrategySwitch = true
         runCatching { strategySwitchView?.isChecked = strategy == NfcProtectionStrategy.ROOT }
         updatingStrategySwitch = false
+
+        updatingDebugSwitch = true
+        runCatching { debugSwitchView?.isChecked = debugLog }
+        updatingDebugSwitch = false
     }
 
     private fun computeIsHookActive(): Boolean {

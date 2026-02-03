@@ -9,6 +9,21 @@ internal object ReaderModeController {
 
     data class Result(val ok: Boolean, val error: String? = null)
 
+    fun desiredConfig(): Pair<Int, Bundle?> {
+        val flags =
+            NfcAdapter.FLAG_READER_NFC_A or
+                NfcAdapter.FLAG_READER_NFC_B or
+                NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK or
+                NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS
+
+        val extras = Bundle().apply {
+            // Lower presence check delay reduces repeated callbacks on some devices.
+            putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250)
+        }
+
+        return flags to extras
+    }
+
     fun enable(activity: Activity): Result {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
             return Result(ok = false, error = "ReaderMode requires API 19+")
@@ -18,16 +33,7 @@ internal object ReaderModeController {
             ?: return Result(ok = false, error = "NFC not supported")
 
         return try {
-            val flags =
-                NfcAdapter.FLAG_READER_NFC_A or
-                    NfcAdapter.FLAG_READER_NFC_B or
-                    NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK or
-                    NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS
-
-            val extras = Bundle().apply {
-                // Lower presence check delay reduces repeated callbacks on some devices.
-                putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250)
-            }
+            val (flags, extras) = desiredConfig()
 
             adapter.enableReaderMode(
                 activity,

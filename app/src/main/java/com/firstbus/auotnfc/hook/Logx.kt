@@ -6,7 +6,15 @@ internal object Logx {
 
     private const val TAG = "FirstBusAutoNFC"
 
+    @Volatile
+    private var debugEnabled: Boolean = false
+
+    fun setDebugEnabled(enabled: Boolean) {
+        debugEnabled = enabled
+    }
+
     fun d(msg: String) {
+        if (!debugEnabled) return
         Log.d(TAG, msg)
     }
 
