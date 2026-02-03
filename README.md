@@ -1,6 +1,6 @@
 # First Bus AutoNFC
 
-A module that reduces accidental contactless payment prompts while the First Bus (UK) app shows the QR ticket screen.
+A module that reduces accidental contactless payment while the First Bus (UK) app shows the QR ticket screen.
 
 ## Features
 
