@@ -33,9 +33,14 @@ class ModuleStatusReceiver : BroadcastReceiver() {
                 when (intent.action) {
                     ModuleStatusProtocol.ACTION_GET_SETTINGS -> {
                         val strategy = ModuleSettingsStore.getStrategy(appContext)
+                        val debugLog = ModuleSettingsStore.getDebugLog(appContext)
+                        val debugStack = ModuleSettingsStore.getDebugStackTrace(appContext)
                         pending.resultCode = 0
-                        pending.resultData = ModuleStatusProtocol.RESULT_SETTINGS_PREFIX + strategy.wireValue
-                        Logx.d("[ipc] get settings strategy=${strategy.wireValue}")
+                        pending.resultData = ModuleStatusProtocol.RESULT_SETTINGS_PREFIX +
+                            "strategy=${strategy.wireValue};" +
+                            "${ModuleStatusProtocol.KEY_DEBUG_LOG}=${if (debugLog) 1 else 0};" +
+                            "${ModuleStatusProtocol.KEY_DEBUG_STACK}=${if (debugStack) 1 else 0}"
+                        Logx.d("[ipc] get settings strategy=${strategy.wireValue} debug_log=$debugLog debug_stack=$debugStack")
                     }
 
                     else -> {

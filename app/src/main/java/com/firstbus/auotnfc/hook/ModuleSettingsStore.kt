@@ -28,4 +28,24 @@ internal object ModuleSettingsStore {
             null
         }
     }
+
+    fun setDebugStackTrace(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(ModuleStatusProtocol.PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(ModuleStatusProtocol.KEY_DEBUG_STACK, enabled).apply()
+    }
+
+    fun getDebugStackTrace(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(ModuleStatusProtocol.PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(ModuleStatusProtocol.KEY_DEBUG_STACK, false)
+    }
+
+    fun setDebugLog(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(ModuleStatusProtocol.PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(ModuleStatusProtocol.KEY_DEBUG_LOG, enabled).apply()
+    }
+
+    fun getDebugLog(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(ModuleStatusProtocol.PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(ModuleStatusProtocol.KEY_DEBUG_LOG, false)
+    }
 }
