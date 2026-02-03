@@ -57,5 +57,13 @@
                 <action android:name="com.firstbus.auotnfc.action.TOGGLE_NFC" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".ipc.ModuleStatusReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.firstbus.auotnfc.action.GET_SETTINGS" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

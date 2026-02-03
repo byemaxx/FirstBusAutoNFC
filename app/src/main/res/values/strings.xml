@@ -3,8 +3,6 @@
     <string name="xposed_desc">Auto turn off NFC when show mticket in firstbus</string>
     <string name="module_not_activated">Module not activated</string>
     <string name="module_is_activated">Module is activated</string>
-    <string name="display_settings">Display settings</string>
-    <string name="hide_app_icon_on_launcher">Hide app icons on launcher</string>
-    <string name="hide_app_icon_on_launcher_tip">After hiding the app icon, the interface may be closed and will no longer be displayed on the launcher. You can find and open the module settings in EdXposed or LSPosed.</string>
-    <string name="hide_app_icon_on_launcher_notice">Note: Be sure to turn off the \"Force apps to show launcher icons\" feature in LSPosed</string>
+    <string name="activation_note_lspatch">Note: Ignore Activation status in LSPatch.</string>
+    <string name="display_settings">Mode settings</string>
 </resources>
