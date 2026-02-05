@@ -1,6 +1,7 @@
 package com.firstbus.auotnfc.hook
 
 import android.app.Activity
+import android.app.Instrumentation
 import android.nfc.NfcAdapter
 import android.os.Bundle
 import android.util.Log
@@ -23,6 +24,25 @@ class HookEntry : IYukiHookXposedInit {
     override fun onHook() = encase {
         loadApp(name = "com.firstgroup.first.bus") {
             Logx.i("[hook] loaded app=com.firstgroup.first.bus")
+
+            // Reliable lifecycle fallback: Instrumentation is always involved in Activity resume.
+            // This helps when the host Activity overrides onResume/onPostResume in unexpected ways.
+            "android.app.Instrumentation".toClass().resolve().apply {
+                optional(silent = true).firstMethodOrNull {
+                    name = "callActivityOnResume"
+                    parameters(Activity::class)
+                    returnType = Void.TYPE
+                }?.hook {
+                    after {
+                        runCatching {
+                            val activity = args.getOrNull(0) as? Activity ?: return@runCatching
+                            if (TicketNfcController.isBottomBarHostActivity(activity)) {
+                                TicketNfcController.onBottomBarHostResume(activity)
+                            }
+                        }.onFailure { Logx.e("[hook] Instrumentation.callActivityOnResume handler error", it) }
+                    }
+                }
+            }
 
             // Fallback: TicketActivity might NOT override some lifecycle methods (e.g. onPostResume/onWindowFocusChanged).
             // Hook Activity-level callbacks and filter at runtime.
@@ -221,6 +241,36 @@ class HookEntry : IYukiHookXposedInit {
                     }
                 }
             }
+
+            // BottomBarHostActivity is the page before/after TicketActivity in this host app.
+            // Hook it directly (do not rely on base Activity callbacks; host may override without calling super).
+            runCatching {
+                "com.firstgroup.main.controller.BottomBarHostActivity".toClass().resolve().apply {
+                    optional(silent = true).firstMethodOrNull {
+                        name = "onResume"
+                        emptyParameters()
+                        returnType = Void.TYPE
+                    }?.hook {
+                        after {
+                            runCatching {
+                                TicketNfcController.onBottomBarHostResume(instance<Activity>())
+                            }.onFailure { Logx.e("[hook] BottomBarHostActivity.onResume handler error", it) }
+                        }
+                    }
+
+                    optional(silent = true).firstMethodOrNull {
+                        name = "onPostResume"
+                        emptyParameters()
+                        returnType = Void.TYPE
+                    }?.hook {
+                        after {
+                            runCatching {
+                                TicketNfcController.onBottomBarHostResume(instance<Activity>())
+                            }.onFailure { Logx.e("[hook] BottomBarHostActivity.onPostResume handler error", it) }
+                        }
+                    }
+                }
+            }.onFailure { Logx.w("[hook] BottomBarHostActivity hooks unavailable: ${it.javaClass.simpleName}: ${it.message}") }
         }
     }
 }

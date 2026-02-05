@@ -36,7 +36,9 @@ class MainActivity : AppViewsActivity() {
 
     private var statusIconView: android.widget.ImageView? = null
 
-    private var strategySwitchView: com.firstbus.auotnfc.ui.view.MaterialSwitch? = null
+    private var rootSwitchView: com.firstbus.auotnfc.ui.view.MaterialSwitch? = null
+    private var readerSwitchView: com.firstbus.auotnfc.ui.view.MaterialSwitch? = null
+    private var jumpSwitchView: com.firstbus.auotnfc.ui.view.MaterialSwitch? = null
 
     private var debugSwitchView: com.firstbus.auotnfc.ui.view.MaterialSwitch? = null
 
@@ -203,17 +205,59 @@ class MainActivity : AppViewsActivity() {
                             MaterialSwitch(
                                 lparams = LayoutParams(widthMatchParent = true)
                             ) {
-                                text = "Use Root mode (turn NFC OFF)"
+                                text = "Mode 1: Use Root mode (Recommended, turn NFC OFF)"
                                 isAllCaps = false
                                 textColor = colorResource(R.color.colorTextGray)
                                 textSize = 15f
                                 isChecked = initialStrategy == NfcProtectionStrategy.ROOT
-                                strategySwitchView = this
+                                rootSwitchView = this
                                 setOnCheckedChangeListener { button, isChecked ->
                                     if (!button.isPressed || updatingStrategySwitch) return@setOnCheckedChangeListener
                                     if (isChecked) {
                                         // Selecting Root mode will trigger a root prompt/check.
                                         ensureRootOrFallback(showDialogOnFail = true)
+                                    } else {
+                                        // If user unchecks Root, fallback to Reader.
+                                        ModuleSettingsStore.setStrategy(this@MainActivity, NfcProtectionStrategy.READER_MODE)
+                                        refreshStatusViews()
+                                    }
+                                }
+                            }
+
+                            MaterialSwitch(
+                                lparams = LayoutParams(widthMatchParent = true)
+                            ) {
+                                text = "Mode 2: Use Reader Mode (Standard)"
+                                isAllCaps = false
+                                textColor = colorResource(R.color.colorTextGray)
+                                textSize = 15f
+                                isChecked = initialStrategy == NfcProtectionStrategy.READER_MODE
+                                readerSwitchView = this
+                                setOnCheckedChangeListener { button, isChecked ->
+                                    if (!button.isPressed || updatingStrategySwitch) return@setOnCheckedChangeListener
+                                    if (isChecked) {
+                                        ModuleSettingsStore.setStrategy(this@MainActivity, NfcProtectionStrategy.READER_MODE)
+                                        refreshStatusViews()
+                                    } else {
+                                        refreshStatusViews()
+                                    }
+                                }
+                            }
+
+                            MaterialSwitch(
+                                lparams = LayoutParams(widthMatchParent = true)
+                            ) {
+                                text = "Mode 3: Jump to NFC Settings"
+                                isAllCaps = false
+                                textColor = colorResource(R.color.colorTextGray)
+                                textSize = 15f
+                                isChecked = initialStrategy == NfcProtectionStrategy.JUMP_SETTINGS
+                                jumpSwitchView = this
+                                setOnCheckedChangeListener { button, isChecked ->
+                                    if (!button.isPressed || updatingStrategySwitch) return@setOnCheckedChangeListener
+                                    if (isChecked) {
+                                        ModuleSettingsStore.setStrategy(this@MainActivity, NfcProtectionStrategy.JUMP_SETTINGS)
+                                        refreshStatusViews()
                                     } else {
                                         ModuleSettingsStore.setStrategy(this@MainActivity, NfcProtectionStrategy.READER_MODE)
                                         refreshStatusViews()
@@ -298,7 +342,11 @@ class MainActivity : AppViewsActivity() {
 
         // Keep switch in sync with prefs
         updatingStrategySwitch = true
-        runCatching { strategySwitchView?.isChecked = strategy == NfcProtectionStrategy.ROOT }
+        runCatching {
+            rootSwitchView?.isChecked = strategy == NfcProtectionStrategy.ROOT
+            readerSwitchView?.isChecked = strategy == NfcProtectionStrategy.READER_MODE
+            jumpSwitchView?.isChecked = strategy == NfcProtectionStrategy.JUMP_SETTINGS
+        }
         updatingStrategySwitch = false
 
         updatingDebugSwitch = true
@@ -313,7 +361,9 @@ class MainActivity : AppViewsActivity() {
     private fun ensureRootOrFallback(showDialogOnFail: Boolean) {
         // Do not persist ROOT strategy until Root is actually granted.
         updatingStrategySwitch = true
-        strategySwitchView?.isEnabled = false
+        rootSwitchView?.isEnabled = false
+        readerSwitchView?.isEnabled = false
+        jumpSwitchView?.isEnabled = false
         updatingStrategySwitch = false
         rootStatusView?.text = "Root (Module App): checking..."
 
@@ -321,7 +371,9 @@ class MainActivity : AppViewsActivity() {
             val hasRoot = RootShell.hasRoot(forceRefresh = true)
             ModuleSettingsStore.setLastRootOk(this, hasRoot)
             runOnUiThread {
-                strategySwitchView?.isEnabled = true
+                rootSwitchView?.isEnabled = true
+                readerSwitchView?.isEnabled = true
+                jumpSwitchView?.isEnabled = true
 
                 if (hasRoot) {
                     ModuleSettingsStore.setStrategy(this, NfcProtectionStrategy.ROOT)
@@ -329,7 +381,11 @@ class MainActivity : AppViewsActivity() {
                 } else {
                     ModuleSettingsStore.setStrategy(this, NfcProtectionStrategy.READER_MODE)
                     updatingStrategySwitch = true
-                    runCatching { strategySwitchView?.isChecked = false }
+                    runCatching {
+                        rootSwitchView?.isChecked = false
+                        readerSwitchView?.isChecked = true
+                        jumpSwitchView?.isChecked = false
+                    }
                     updatingStrategySwitch = false
                     refreshStatusViews()
 

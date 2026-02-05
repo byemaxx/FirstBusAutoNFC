@@ -7,7 +7,7 @@ internal object ModuleSettingsStore {
     fun getStrategy(context: Context): NfcProtectionStrategy {
         val prefs = context.getSharedPreferences(ModuleStatusProtocol.PREFS_NAME, Context.MODE_PRIVATE)
         val v = prefs.getString(ModuleStatusProtocol.KEY_STRATEGY, null)
-        return NfcProtectionStrategy.fromWireValue(v) ?: NfcProtectionStrategy.READER_MODE
+        return NfcProtectionStrategy.fromWireValue(v) ?: NfcProtectionStrategy.ROOT
     }
 
     fun setStrategy(context: Context, strategy: NfcProtectionStrategy) {
