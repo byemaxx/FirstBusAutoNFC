@@ -1,11 +1,14 @@
 package com.firstbus.auotnfc.hook
 
+import android.app.AlertDialog
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.os.SystemClock
+import android.view.ContextThemeWrapper
 import android.widget.Toast
 import com.firstbus.auotnfc.BuildConfig
 import java.util.WeakHashMap
@@ -13,6 +16,7 @@ import java.util.WeakHashMap
 internal object TicketNfcController {
 
     private const val TICKET_ACTIVITY_CLASS = "com.firstgroup.main.tabs.mtickets.ticket.mvp.TicketActivity"
+    private const val BOTTOM_BAR_HOST_ACTIVITY_CLASS = "com.firstgroup.main.controller.BottomBarHostActivity"
 
     private data class Session(
         val originalEnabled: Boolean,
@@ -29,12 +33,18 @@ internal object TicketNfcController {
         var lastDisableRequestedStack: String? = null,
         var lastDisableExecutedAtMs: Long = 0L,
         var lastDisableExecutedBy: String? = null,
-        var pendingDisable: Runnable? = null
+        var pendingDisable: Runnable? = null,
+        var jumpSettingsActive: Boolean = false,
+        var jumpSettingsEnterPrompted: Boolean = false,
+        var jumpSettingsExitPrompted: Boolean = false
     )
 
     private val sessions = WeakHashMap<Activity, Session>()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val enterToastToken = Any()
+
+    @Volatile
+    private var pendingJumpSettingsExitPrompt: Boolean = false
 
     private const val IPC_STRATEGY_TIMEOUT_MS = 2_500L
     private const val IPC_TOGGLE_TIMEOUT_MS = 4_000L
@@ -68,6 +78,10 @@ internal object TicketNfcController {
         return activity.javaClass.name == TICKET_ACTIVITY_CLASS
     }
 
+    fun isBottomBarHostActivity(activity: Activity): Boolean {
+        return activity.javaClass.name == BOTTOM_BAR_HOST_ACTIVITY_CLASS
+    }
+
     fun onTicketPause(activity: Activity) {
         // Do NOT restore onPause. Ticket screen may still be effectively visible (dialogs/overlays).
         cancelPendingEnterToasts()
@@ -84,6 +98,20 @@ internal object TicketNfcController {
             val recentlyRequested = session.lastDisableRequestedAtMs > 0 && now - session.lastDisableRequestedAtMs < 250L
             if (session.pendingDisable == null && !recentlyRequested) {
                 scheduleDelayedReaderDisable(activity, session, "pause")
+            }
+        }
+
+        // Jump Settings Strategy Exit Logic
+        // NOTE: "Exiting ticket page" may not set isFinishing=true (e.g. navigation within host app).
+        // We only prompt if user originally had NFC ON when entering the ticket page, but now NFC is OFF.
+        if (session.jumpSettingsActive && session.originalEnabled && !session.jumpSettingsExitPrompted) {
+            val isNfcEnabled = NfcToggler.isEnabled(activity)
+            if (!isNfcEnabled) {
+                session.jumpSettingsExitPrompted = true
+                pendingJumpSettingsExitPrompt = true
+                Logx.i("[ticket] jump_settings exit pending (pause) nfc=OFF")
+            } else {
+                Logx.d("[ticket] jump_settings exit skip (pause) nfc=ON")
             }
         }
     }
@@ -178,6 +206,18 @@ internal object TicketNfcController {
         if (session.restored) return
         session.restored = true
 
+        // If leaving ticket page under Jump Settings strategy and NFC is OFF, prompt on next resumed Activity.
+        if (session.jumpSettingsActive && session.originalEnabled && !session.jumpSettingsExitPrompted) {
+            val isNfcEnabled = NfcToggler.isEnabled(activity)
+            if (!isNfcEnabled) {
+                session.jumpSettingsExitPrompted = true
+                pendingJumpSettingsExitPrompt = true
+                Logx.i("[ticket] jump_settings exit pending (stop) nfc=OFF")
+            } else {
+                Logx.d("[ticket] jump_settings exit skip (stop) nfc=ON")
+            }
+        }
+
         cancelDelayedReaderDisable(session)
 
         // Restore whichever protection we used.
@@ -193,7 +233,7 @@ internal object TicketNfcController {
                 }
             }
 
-            if (session.readerModeActiveAssumed) {
+            if (session.readerModeActiveAssumed && !session.jumpSettingsActive) {
                 if (!session.isToggling) {
                     session.isToggling = true
                     session.lastDisableRequestedAtMs = SystemClock.uptimeMillis()
@@ -210,6 +250,26 @@ internal object TicketNfcController {
         }
 
         sessions.remove(activity)
+    }
+
+    fun onBottomBarHostResume(activity: Activity) {
+        if (!pendingJumpSettingsExitPrompt) return
+        if (!isActivityUsable(activity)) return
+        if (!isBottomBarHostActivity(activity)) return
+
+        // If user already turned NFC back ON before we could prompt, just clear the pending flag.
+        if (NfcToggler.isEnabled(activity)) {
+            pendingJumpSettingsExitPrompt = false
+            Logx.d("[ticket] jump_settings exit cleared (host resume) nfc=ON")
+            return
+        }
+
+        pendingJumpSettingsExitPrompt = false
+        Logx.i("[ticket] jump_settings exit prompting on BottomBarHostActivity")
+        showJumpSettingsDialog(
+            activity,
+            "You have exited the ticket page.\n\nNFC is currently OFF. Do you want to go to Settings to turn it back ON?"
+        )
     }
 
     private fun ensureProtection(activity: Activity, session: Session, reason: String, force: Boolean) {
@@ -275,6 +335,22 @@ internal object TicketNfcController {
                         return@requestModuleStrategy
                     }
                     enableReaderModeFallback(activity, session, reason)
+                }
+
+
+                NfcProtectionStrategy.JUMP_SETTINGS -> {
+                    session.jumpSettingsActive = true
+                    val isNfcEnabled = NfcToggler.isEnabled(activity)
+            
+                     // If NFC is enabled, and we haven't prompted yet.
+                    if (isNfcEnabled && !session.jumpSettingsEnterPrompted) {
+                         session.jumpSettingsEnterPrompted = true
+                         showJumpSettingsDialog(
+                             activity, 
+                             "NFC is currently ON.\n\nDo you want to go to Settings now?"
+                         )
+                    }
+                    session.isToggling = false
                 }
             }
         }
@@ -426,6 +502,36 @@ internal object TicketNfcController {
             if (!called.compareAndSet(false, true)) return@onFailure
             callback(defaultStrategy)
         }
+    }
+
+    private fun showJumpSettingsDialog(activity: Activity, message: String) {
+         if (!isActivityUsable(activity)) return
+         mainHandler.post {
+             runCatching {
+                 // Use a stable system dialog theme; the host app theme may render message text invisible.
+                 val themedContext = ContextThemeWrapper(activity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                 AlertDialog.Builder(themedContext)
+                     .setTitle("AutoNFC Settings")
+                     .setMessage(message)
+                     .setPositiveButton("Settings") { _, _ ->
+                         runCatching {
+                             val intent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                  Intent(Settings.Panel.ACTION_NFC)
+                             } else {
+                                  // Fallback: Use Wireless Settings if NFC Settings is misbehaving or not standard
+                                  Intent(Settings.ACTION_WIRELESS_SETTINGS)
+                             }
+                             // Try to use NFC_SETTINGS if Panel is effectively not working or to check for specific rom behavior?
+                             // User reported ACTION_NFC_SETTINGS goes to wallet chooser.
+                             // Let's rely on Panel for new phones, and Wireless for old ones.
+                             // But wait, if Panel fails?
+                             activity.startActivity(intent)
+                         }
+                     }
+                     .setNegativeButton("Cancel", null)
+                     .show()
+             }
+         }
     }
 
     private data class SettingsPayload(
