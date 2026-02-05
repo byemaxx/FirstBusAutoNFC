@@ -265,11 +265,8 @@ internal object TicketNfcController {
         }
 
         pendingJumpSettingsExitPrompt = false
-        Logx.i("[ticket] jump_settings exit prompting on BottomBarHostActivity")
-        showJumpSettingsDialog(
-            activity,
-            "You have exited the ticket page.\n\nNFC is currently OFF. Do you want to go to Settings to turn it back ON?"
-        )
+        Logx.i("[ticket] jump_settings exit on BottomBarHostActivity")
+        openNfcSettings(activity)
     }
 
     private fun ensureProtection(activity: Activity, session: Session, reason: String, force: Boolean) {
@@ -342,13 +339,10 @@ internal object TicketNfcController {
                     session.jumpSettingsActive = true
                     val isNfcEnabled = NfcToggler.isEnabled(activity)
             
-                     // If NFC is enabled, and we haven't prompted yet.
+                     // If NFC is enabled, and we haven't prompted yet, open NFC settings directly.
                     if (isNfcEnabled && !session.jumpSettingsEnterPrompted) {
                          session.jumpSettingsEnterPrompted = true
-                         showJumpSettingsDialog(
-                             activity, 
-                             "NFC is currently ON.\n\nDo you want to go to Settings now?"
-                         )
+                         openNfcSettings(activity)
                     }
                     session.isToggling = false
                 }
@@ -504,6 +498,21 @@ internal object TicketNfcController {
         }
     }
 
+    private fun openNfcSettings(activity: Activity) {
+        if (!isActivityUsable(activity)) return
+        mainHandler.post {
+            runCatching {
+                val intent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    Intent(Settings.Panel.ACTION_NFC)
+                } else {
+                    // Fallback: Use Wireless Settings if NFC Settings is misbehaving or not standard
+                    Intent(Settings.ACTION_WIRELESS_SETTINGS)
+                }
+                activity.startActivity(intent)
+            }
+        }
+    }
+
     private fun showJumpSettingsDialog(activity: Activity, message: String) {
          if (!isActivityUsable(activity)) return
          mainHandler.post {
@@ -514,19 +523,7 @@ internal object TicketNfcController {
                      .setTitle("AutoNFC Settings")
                      .setMessage(message)
                      .setPositiveButton("Settings") { _, _ ->
-                         runCatching {
-                             val intent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                                  Intent(Settings.Panel.ACTION_NFC)
-                             } else {
-                                  // Fallback: Use Wireless Settings if NFC Settings is misbehaving or not standard
-                                  Intent(Settings.ACTION_WIRELESS_SETTINGS)
-                             }
-                             // Try to use NFC_SETTINGS if Panel is effectively not working or to check for specific rom behavior?
-                             // User reported ACTION_NFC_SETTINGS goes to wallet chooser.
-                             // Let's rely on Panel for new phones, and Wireless for old ones.
-                             // But wait, if Panel fails?
-                             activity.startActivity(intent)
-                         }
+                         openNfcSettings(activity)
                      }
                      .setNegativeButton("Cancel", null)
                      .show()
