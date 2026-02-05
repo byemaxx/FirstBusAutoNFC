@@ -233,7 +233,7 @@ internal object TicketNfcController {
                 }
             }
 
-            if (session.readerModeActiveAssumed) {
+            if (session.readerModeActiveAssumed && !session.jumpSettingsActive) {
                 if (!session.isToggling) {
                     session.isToggling = true
                     session.lastDisableRequestedAtMs = SystemClock.uptimeMillis()
@@ -350,6 +350,7 @@ internal object TicketNfcController {
                              "NFC is currently ON.\n\nDo you want to go to Settings now?"
                          )
                     }
+                    session.isToggling = false
                 }
             }
         }
